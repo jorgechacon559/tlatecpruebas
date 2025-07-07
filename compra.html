@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Suscripción y Productos Extra</title>
   <style>
     body {
@@ -12,7 +13,7 @@
     }
 
     .container {
-      max-width: 700px;
+      max-width: 800px;
       margin: auto;
       background: white;
       padding: 30px;
@@ -53,11 +54,33 @@
       background-color: #219150;
     }
 
+    .btn-secondary {
+      background-color: #3498db;
+    }
+
+    .btn-secondary:hover {
+      background-color: #2980b9;
+    }
+
+    .btn-warning {
+      background-color: #e74c3c;
+    }
+
+    .btn-warning:hover {
+      background-color: #c0392b;
+    }
+
     .product {
       border: 1px solid #dce4ec;
       border-radius: 10px;
       padding: 20px;
       margin-bottom: 20px;
+      position: relative;
+    }
+
+    .product.selected {
+      border-color: #27ae60;
+      background-color: #f8fff9;
     }
 
     .product h3 {
@@ -67,6 +90,120 @@
     .product p {
       margin: 0 0 10px;
       color: #555;
+    }
+
+    .product-type {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #3498db;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .product-type.recurring {
+      background-color: #e67e22;
+    }
+
+    .form-section {
+      background-color: #f8f9fa;
+      padding: 25px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #dce4ec;
+      border-radius: 5px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .cart-summary {
+      background-color: #f1f3f6;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .cart-item:last-child {
+      border-bottom: none;
+    }
+
+    .cart-total {
+      font-weight: bold;
+      font-size: 18px;
+      color: #2c3e50;
+      border-top: 2px solid #27ae60;
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .step {
+      opacity: 0.6;
+    }
+
+    .step.active {
+      opacity: 1;
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #bdc3c7;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 10px;
+      font-weight: bold;
+    }
+
+    .step-number.active {
+      background-color: #27ae60;
+    }
+
+    .step-number.completed {
+      background-color: #3498db;
+    }
+
+    .btn-spacing {
+      margin-left: 10px;
     }
 
     @media (max-width: 600px) {
@@ -79,46 +216,360 @@
 <body>
 
   <div class="container">
-    <h1>Bienvenido</h1>
+    <h1>Bienvenido a nuestro sistema de suscripciones</h1>
 
-    <!-- Paso 1: Suscripción aquí ponemos el link para la suscripción  -->
-    <div class="section">
-      <h2>1. Suscríbete</h2>
-      <p>Accede a beneficios exclusivos con nuestra suscripción mensual por solo <strong>$10 MXN</strong>.</p>
-      <a href="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e5a7880197e620da930045" class="btn" target="_blank"> 
-        Suscribirme ahora
-      </a>
+    <!-- Indicador de pasos -->
+    <div class="step-indicator">
+      <div class="step-number active" id="step1">1</div>
+      <div class="step-number" id="step2">2</div>
+      <div class="step-number" id="step3">3</div>
+      <div class="step-number" id="step4">4</div>
     </div>
 
-    <!-- Paso 2: Productos adicionales aquí el catálogo -->
-    <div class="section">
-      <h2>2. Agrega productos adicionales</h2>
-
-      <div class="product">
-        <h3>Producto 1</h3>
-        <p>Descripción breve del producto. Precio: <strong>$200 MXN</strong></p>
-        <a href="https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=PREF_ID_PRODUCTO1" class="btn" target="_blank">
-          Comprar Producto 1
-        </a>
+    <!-- Paso 1: Seleccionar Suscripción -->
+    <div class="section step active" id="subscription-step">
+      <h2>Paso 1: Selecciona tu suscripción</h2>
+      <p>Elige el paquete que mejor se adapte a tus necesidades:</p>
+      
+      <div class="product" data-type="subscription" data-id="sub1" data-price="10" data-url="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e5a7880197e620da930045">
+        <div class="product-type recurring">SUSCRIPCIÓN</div>
+        <h3>Paquete Premium</h3>
+        <p>Perfecto para comenzar. Accede a beneficios exclusivos con nuestra suscripción mensual básica.</p>
+        <p><strong>$10 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Premium</button>
       </div>
 
-      <div class="product">
-        <h3>Producto 2</h3>
-        <p>Descripción breve del producto. Precio: <strong>$150 MXN</strong></p>
-        <a href="https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=PREF_ID_PRODUCTO2" class="btn" target="_blank">
-          Comprar Producto 2
-        </a>
+      <div class="product" data-type="subscription" data-id="sub2" data-price="25" data-url="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e081eb0197e6f4c94e0264">
+        <div class="product-type recurring">SUSCRIPCIÓN</div>
+        <h3>Paquete Intermedio</h3>
+        <p>Mayor valor y funcionalidades. Ideal para usuarios que buscan más beneficios y herramientas avanzadas.</p>
+        <p><strong>$25 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Intermedio</button>
       </div>
 
-      <div class="product">
-        <h3>Producto 3</h3>
-        <p>Descripción breve del producto. Precio: <strong>$100 MXN</strong></p>
-        <a href="https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=PREF_ID_PRODUCTO3" class="btn" target="_blank">
-          Comprar Producto 3
-        </a>
+      <div class="product" data-type="subscription" data-id="sub3" data-price="50" data-url="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e5a7880197e6f55dcd00d1">
+        <div class="product-type recurring">SUSCRIPCIÓN</div>
+        <h3>Paquete Avanzado</h3>
+        <p>La experiencia completa. Acceso total a todas las funciones premium y soporte prioritario.</p>
+        <p><strong>$50 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Avanzado</button>
       </div>
+
+      <button class="btn btn-secondary hidden" id="continue-to-extras" onclick="goToStep(2)">
+        Continuar a Productos Extra
+      </button>
+    </div>
+
+    <!-- Paso 2: Productos Adicionales -->
+    <div class="section step hidden" id="extras-step">
+      <h2>Paso 2: Productos adicionales (Opcional)</h2>
+      <p>Agrega productos de pago único a tu pedido. Puedes seleccionar varios o ninguno:</p>
+
+      <div class="product" data-type="extra" data-id="extra1" data-price="50" data-url="https://mpago.la/33sgGGY">
+        <div class="product-type">PAGO ÚNICO</div>
+        <h3>Producto Extra Premium</h3>
+        <p>Complemento premium para potenciar tu experiencia. Incluye funciones avanzadas y contenido exclusivo.</p>
+        <p><strong>$50 MXN</strong> (pago único)</p>
+        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
+      </div>
+
+      <div class="product" data-type="extra" data-id="extra2" data-price="30" data-url="">
+        <div class="product-type">PAGO ÚNICO</div>
+        <h3>Pack de Plantillas</h3>
+        <p>Colección de plantillas profesionales listas para usar. Ahorra tiempo y obtén resultados profesionales.</p>
+        <p><strong>$30 MXN</strong> (pago único)</p>
+        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
+      </div>
+
+      <div class="product" data-type="extra" data-id="extra3" data-price="75" data-url="">
+        <div class="product-type">PAGO ÚNICO</div>
+        <h3>Curso Avanzado</h3>
+        <p>Curso completo con certificación incluida. Aprende técnicas avanzadas de la mano de expertos.</p>
+        <p><strong>$75 MXN</strong> (pago único)</p>
+        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
+      </div>
+
+      <div class="product" data-type="extra" data-id="extra4" data-price="25" data-url="">
+        <div class="product-type">PAGO ÚNICO</div>
+        <h3>Kit de Recursos</h3>
+        <p>Conjunto de herramientas y recursos adicionales. Incluye guías, checklists y material de apoyo.</p>
+        <p><strong>$25 MXN</strong> (pago único)</p>
+        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
+      </div>
+
+      <button class="btn btn-secondary" onclick="goToStep(3)">
+        Continuar a Datos Personales
+      </button>
+    </div>
+
+    <!-- Paso 3: Formulario de Datos -->
+    <div class="section step hidden" id="form-step">
+      <h2>Paso 3: Ingresa tus datos</h2>
+      
+      <div class="form-section">
+        <div class="form-group">
+          <label for="nombre">Nombre *</label>
+          <input type="text" id="nombre" name="nombre" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="apellido">Apellido *</label>
+          <input type="text" id="apellido" name="apellido" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="email">Correo Electrónico *</label>
+          <input type="email" id="email" name="email" required>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" onclick="goToStep(4)">
+        Revisar Pedido
+      </button>
+    </div>
+
+    <!-- Paso 4: Resumen y Checkout -->
+    <div class="section step hidden" id="checkout-step">
+      <h2>Paso 4: Resumen de tu pedido</h2>
+      
+      <div class="cart-summary" id="cart-summary">
+        <!-- El resumen se generará dinámicamente -->
+      </div>
+
+      <div id="customer-info" class="form-section">
+        <!-- Los datos del cliente se mostrarán aquí -->
+      </div>
+
+      <button class="btn" onclick="processPayment()">
+        Proceder al Pago
+      </button>
+      
+      <button class="btn btn-warning btn-spacing" onclick="goToStep(3)">
+        Modificar Datos
+      </button>
     </div>
   </div>
+
+  <script>
+    let cart = {
+      subscription: null,
+      extras: [],
+      customer: {}
+    };
+
+    function selectSubscription(button) {
+      const product = button.closest('.product');
+      
+      // Remover selección anterior de TODAS las suscripciones
+      document.querySelectorAll('.product[data-type="subscription"]').forEach(p => {
+        p.classList.remove('selected');
+        const btn = p.querySelector('button');
+        const subscriptionName = p.querySelector('h3').textContent.replace('Paquete ', '');
+        btn.textContent = `Seleccionar ${subscriptionName}`;
+        btn.className = 'btn';
+      });
+      
+      // Seleccionar actual
+      product.classList.add('selected');
+      const subscriptionName = product.querySelector('h3').textContent.replace('Paquete ', '');
+      button.textContent = `${subscriptionName} Seleccionado ✓`;
+      button.className = 'btn btn-secondary';
+      
+      // Guardar en carrito
+      cart.subscription = {
+        id: product.dataset.id,
+        name: product.querySelector('h3').textContent,
+        price: parseInt(product.dataset.price),
+        url: product.dataset.url,
+        type: 'subscription'
+      };
+      
+      // Mostrar botón continuar
+      document.getElementById('continue-to-extras').classList.remove('hidden');
+    }
+
+    function toggleExtra(button) {
+      const product = button.closest('.product');
+      const extraId = product.dataset.id;
+      
+      if (product.classList.contains('selected')) {
+        // Quitar del carrito
+        product.classList.remove('selected');
+        button.textContent = 'Agregar al Carrito';
+        button.className = 'btn btn-secondary';
+        
+        cart.extras = cart.extras.filter(item => item.id !== extraId);
+      } else {
+        // Agregar al carrito
+        product.classList.add('selected');
+        button.textContent = 'En el Carrito ✓';
+        button.className = 'btn';
+        
+        cart.extras.push({
+          id: product.dataset.id,
+          name: product.querySelector('h3').textContent,
+          price: parseInt(product.dataset.price),
+          url: product.dataset.url,
+          type: 'extra'
+        });
+      }
+    }
+
+    function goToStep(stepNumber) {
+      // Validaciones
+      if (stepNumber === 2 && !cart.subscription) {
+        alert('Por favor selecciona una suscripción primero.');
+        return;
+      }
+      
+      if (stepNumber === 4) {
+        const nombre = document.getElementById('nombre').value;
+        const apellido = document.getElementById('apellido').value;
+        const email = document.getElementById('email').value;
+        
+        if (!nombre || !apellido || !email) {
+          alert('Por favor completa todos los campos obligatorios.');
+          return;
+        }
+        
+        cart.customer = { nombre, apellido, email };
+        updateCartSummary();
+      }
+      
+      // Ocultar todos los pasos
+      document.querySelectorAll('.step').forEach(step => {
+        step.classList.add('hidden');
+        step.classList.remove('active');
+      });
+      
+      // Actualizar indicadores
+      document.querySelectorAll('.step-number').forEach((indicator, index) => {
+        if (index + 1 < stepNumber) {
+          indicator.classList.add('completed');
+          indicator.classList.remove('active');
+        } else if (index + 1 === stepNumber) {
+          indicator.classList.add('active');
+          indicator.classList.remove('completed');
+        } else {
+          indicator.classList.remove('active', 'completed');
+        }
+      });
+      
+      // Mostrar paso actual
+      const steps = ['', 'subscription-step', 'extras-step', 'form-step', 'checkout-step'];
+      document.getElementById(steps[stepNumber]).classList.remove('hidden');
+      document.getElementById(steps[stepNumber]).classList.add('active');
+    }
+
+    function updateCartSummary() {
+      const summaryDiv = document.getElementById('cart-summary');
+      const customerDiv = document.getElementById('customer-info');
+      
+      let html = '<h3>Resumen del Pedido</h3>';
+      let totalRecurring = 0;
+      let totalUnique = 0;
+      
+      // Suscripción
+      if (cart.subscription) {
+        html += `
+          <div class="cart-item">
+            <span>${cart.subscription.name} (Mensual)</span>
+            <span>$${cart.subscription.price} MXN/mes</span>
+          </div>
+        `;
+        totalRecurring = cart.subscription.price;
+      }
+      
+      // Extras
+      cart.extras.forEach(extra => {
+        html += `
+          <div class="cart-item">
+            <span>${extra.name} (Pago único)</span>
+            <span>$${extra.price} MXN</span>
+          </div>
+        `;
+        totalUnique += extra.price;
+      });
+      
+      html += `
+        <div class="cart-total">
+          Pago recurrente: $${totalRecurring} MXN/mes<br>
+          Pago único: $${totalUnique} MXN
+        </div>
+      `;
+      
+      summaryDiv.innerHTML = html;
+      
+      // Información del cliente
+      customerDiv.innerHTML = `
+        <h3>Datos del Cliente</h3>
+        <p><strong>Nombre:</strong> ${cart.customer.nombre} ${cart.customer.apellido}</p>
+        <p><strong>Email:</strong> ${cart.customer.email}</p>
+      `;
+    }
+
+    function processPayment() {
+      // Enviar datos al backend para crear pedido y obtener URLs de pago
+      fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cart)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log('✅ Pedido creado exitosamente:', data);
+          
+          // Guardar datos para la página de confirmación
+          localStorage.setItem('orderData', JSON.stringify({
+            ...cart,
+            orderId: data.orderId,
+            orderNumber: data.orderNumber,
+            customerId: data.customerId,
+            paymentUrls: data.paymentUrls
+          }));
+          
+          // Mostrar mensaje de procesamiento
+          let paymentMessage = '✅ Pedido registrado exitosamente!\n\nAhora procederemos con los pagos en MercadoPago:';
+          if (data.paymentUrls.subscriptionUrl) {
+            paymentMessage += '\n• Suscripción mensual ($' + data.totalRecurrente + ' MXN/mes)';
+          }
+          if (data.paymentUrls.extrasUrl) {
+            paymentMessage += '\n• Productos adicionales ($' + data.totalUnico + ' MXN pago único)';
+          }
+          paymentMessage += '\n\n¡Recibirás un correo de confirmación después del pago!';
+          
+          alert(paymentMessage);
+          
+          // Abrir MercadoPago para suscripción (URL estática)
+          if (data.paymentUrls.subscriptionUrl) {
+            const subscriptionUrl = data.paymentUrls.subscriptionUrl + '&external_reference=' + data.orderNumber;
+            window.open(subscriptionUrl, '_blank', 'noopener,noreferrer');
+          }
+          
+          // Abrir MercadoPago para extras (URL dinámica)
+          if (data.paymentUrls.extrasUrl) {
+            setTimeout(() => {
+              window.open(data.paymentUrls.extrasUrl, '_blank', 'noopener,noreferrer');
+            }, 1500);
+          }
+          
+          // NO redirigir automáticamente - MercadoPago redirigirá después del pago
+          // El success.html se abrirá cuando MercadoPago confirme el pago
+          
+        } else {
+          alert('❌ Error al procesar el pedido: ' + (data.error || 'Error desconocido'));
+          console.error('Error:', data);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Error enviando pedido:', error);
+        alert('❌ Error de conexión con el servidor.\n\nPor favor:\n1. Verifica tu conexión a internet\n2. Asegúrate de que el servidor esté ejecutándose\n3. Intenta nuevamente');
+      });
+    }
+  </script>
 
 </body>
 </html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pago Exitoso</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-radius: 50%;
+      border-top-color: #27ae60;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-message {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .btn {
+      background-color: #27ae60;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">✅</div>
+    <h1>¡Pago Exitoso!</h1>
+    
+    <div id="processing" class="status-message">
+      <div class="loading"></div>
+      <p>Procesando tu pago y enviando confirmación por correo...</p>
+    </div>
+
+    <div id="completed" class="status-message" style="display: none;">
+      <p>✅ <strong>Pago confirmado y correo enviado</strong></p>
+      <p>Revisa tu bandeja de entrada para ver los detalles.</p>
+    </div>
+
+    <a href="compra.html" class="btn">Realizar Otra Compra</a>
+  </div>
+
+  <script>
+    // Obtener parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const collectionId = urlParams.get('collection_id');
+    const collectionStatus = urlParams.get('collection_status');
+    const paymentId = urlParams.get('payment_id');
+    const preferenceId = urlParams.get('preference_id');
+    const externalReference = urlParams.get('external_reference');
+    const orderNumber = urlParams.get('order');
+    const paymentTypeFromUrl = urlParams.get('type'); // 'subscription' o 'extras'
+
+    console.log('Parámetros de MercadoPago:', {
+      collectionId,
+      collectionStatus,
+      paymentId,
+      preferenceId,
+      externalReference,
+      orderNumber,
+      paymentType: paymentTypeFromUrl
+    });
+
+    // Determinar el tipo de pago
+    let paymentType = paymentTypeFromUrl || 'extras'; // usar el tipo de la URL o por defecto extras
+    if (window.location.href.includes('subscription') || externalReference && externalReference.includes('SUB')) {
+      paymentType = 'subscription';
+    }
+
+    // Solo procesar si el pago fue aprobado
+    if (collectionStatus === 'approved' || paymentId) {
+      console.log(`✅ Pago ${paymentType} aprobado`);
+      
+      // Simular procesamiento
+      setTimeout(() => {
+        const orderRef = orderNumber || externalReference;
+        
+        if (orderRef) {
+          // Enviar confirmación al backend
+          fetch('/api/payment-confirmed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderNumber: orderRef,
+              paymentType: paymentType,
+              paymentId: paymentId,
+              collectionId: collectionId,
+              status: collectionStatus,
+              preferenceId: preferenceId
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            console.log('✅ Confirmación procesada:', data);
+            
+            // Ocultar loading y mostrar éxito
+            document.getElementById('processing').style.display = 'none';
+            document.getElementById('completed').style.display = 'block';
+            
+            // Actualizar mensaje de éxito
+            document.getElementById('completed').innerHTML = `
+              <p>✅ <strong>Pago ${paymentType === 'subscription' ? 'de suscripción' : 'de productos'} confirmado</strong></p>
+              <p>Pedido #${data.orderNumber}</p>
+              <p>Recibirás un correo de confirmación con todos los detalles.</p>
+            `;
+          })
+          .catch(error => {
+            console.error('❌ Error confirmando pago:', error);
+            document.getElementById('processing').innerHTML = 
+              '<p>⚠️ Pago recibido correctamente, pero hubo un error enviando la confirmación. Te contactaremos pronto.</p>';
+          });
+        } else {
+          document.getElementById('processing').innerHTML = 
+            '<p>⚠️ No se encontró referencia del pedido. Por favor contacta a soporte con tu ID de pago: ' + (paymentId || collectionId) + '</p>';
+        }
+      }, 2000);
+    } else {
+      document.getElementById('processing').innerHTML = 
+        '<p>❌ El pago no fue completado correctamente. Estado: ' + (collectionStatus || 'No disponible') + '</p><p>Por favor intenta nuevamente o contacta a soporte.</p>';
+    }
+  </script>
+</body>
+</html>

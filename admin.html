@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración - Pedidos</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .stat-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 2em;
+    }
+
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    .orders-table th,
+    .orders-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .orders-table th {
+      background-color: #f8f9fa;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .orders-table tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status.pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .status.completed {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .btn {
+      background-color: #27ae60;
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin: 5px;
+    }
+
+    .btn:hover {
+      background-color: #219150;
+    }
+
+    .btn-refresh {
+      background-color: #3498db;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .no-orders {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .order-details {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Panel de Administración</h1>
+
+    <div class="stats" id="stats">
+      <div class="stat-card">
+        <h3 id="total-orders">0</h3>
+        <p>Total de Pedidos</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="total-customers">0</h3>
+        <p>Clientes Únicos</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="monthly-revenue">$0</h3>
+        <p>Ingresos Mensuales</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="unique-revenue">$0</h3>
+        <p>Ingresos Únicos</p>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <button class="btn btn-refresh" onclick="loadOrders()">🔄 Actualizar</button>
+      <a href="compra.html" class="btn">🛒 Ir al Carrito</a>
+      <button class="btn" onclick="exportData()">📥 Exportar Datos</button>
+    </div>
+
+    <div id="orders-container">
+      <div class="loading">Cargando pedidos...</div>
+    </div>
+  </div>
+
+  <script>
+    let ordersData = [];
+
+    async function loadOrders() {
+      try {
+        document.getElementById('orders-container').innerHTML = '<div class="loading">Cargando pedidos...</div>';
+        
+        const response = await fetch('/api/admin/orders');
+        const orders = await response.json();
+        
+        ordersData = orders;
+        displayOrders(orders);
+        updateStats(orders);
+        
+      } catch (error) {
+        console.error('Error cargando pedidos:', error);
+        document.getElementById('orders-container').innerHTML = 
+          '<div class="no-orders">❌ Error cargando pedidos. Asegúrate de que el servidor esté funcionando.</div>';
+      }
+    }
+
+    function displayOrders(orders) {
+      const container = document.getElementById('orders-container');
+      
+      if (orders.length === 0) {
+        container.innerHTML = '<div class="no-orders">📭 No hay pedidos aún. <a href="compra.html">¡Crear el primer pedido!</a></div>';
+        return;
+      }
+
+      let html = `
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Orden #</th>
+              <th>Cliente</th>
+              <th>Email</th>
+              <th>Suscripción</th>
+              <th>Extras</th>
+              <th>Total Mensual</th>
+              <th>Total Único</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      orders.forEach(order => {
+        const subscription = order.datos_suscripcion ? JSON.parse(order.datos_suscripcion) : null;
+        const extras = order.datos_extras ? JSON.parse(order.datos_extras) : [];
+        
+        const subscriptionInfo = subscription ? subscription.name : 'Sin suscripción';
+        const extrasInfo = extras.length > 0 ? 
+          extras.map(e => e.name).join(', ') : 'Sin extras';
+
+        html += `
+          <tr>
+            <td><strong>${order.orden_numero}</strong></td>
+            <td>${order.nombre} ${order.apellido}</td>
+            <td>${order.email}</td>
+            <td>${subscriptionInfo}</td>
+            <td>${extrasInfo}</td>
+            <td>$${order.total_recurrente} MXN</td>
+            <td>$${order.total_unico} MXN</td>
+            <td><span class="status ${order.estado}">${order.estado}</span></td>
+            <td>${new Date(order.fecha_pedido).toLocaleDateString('es-MX')}</td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function updateStats(orders) {
+      const totalOrders = orders.length;
+      const uniqueCustomers = new Set(orders.map(o => o.email)).size;
+      const monthlyRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total_recurrente || 0), 0);
+      const uniqueRevenue = orders.reduce((sum, o) => sum + parseFloat(o.total_unico || 0), 0);
+
+      document.getElementById('total-orders').textContent = totalOrders;
+      document.getElementById('total-customers').textContent = uniqueCustomers;
+      document.getElementById('monthly-revenue').textContent = `$${monthlyRevenue.toFixed(2)}`;
+      document.getElementById('unique-revenue').textContent = `$${uniqueRevenue.toFixed(2)}`;
+    }
+
+    function exportData() {
+      if (ordersData.length === 0) {
+        alert('No hay datos para exportar');
+        return;
+      }
+
+      let csvContent = 'Orden,Cliente,Email,Suscripcion,Total_Mensual,Total_Unico,Estado,Fecha\n';
+      
+      ordersData.forEach(order => {
+        const subscription = order.datos_suscripcion ? JSON.parse(order.datos_suscripcion) : null;
+        const subscriptionName = subscription ? subscription.name : 'Sin suscripcion';
+        
+        csvContent += `${order.orden_numero},"${order.nombre} ${order.apellido}",${order.email},"${subscriptionName}",${order.total_recurrente},${order.total_unico},${order.estado},${order.fecha_pedido}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pedidos_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+
+    // Cargar pedidos al inicio
+    loadOrders();
+
+    // Auto-refresh cada 30 segundos
+    setInterval(loadOrders, 30000);
+  </script>
+</body>
+</html>

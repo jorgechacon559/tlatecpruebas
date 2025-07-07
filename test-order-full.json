@@ -1,0 +1,34 @@
+{
+  "customer": {
+    "nombre": "Carlos",
+    "apellido": "Mendoza", 
+    "email": "carlos.mendoza@ejemplo.com"
+  },
+  "subscription": {
+    "id": "sub3",
+    "name": "Paquete Avanzado",
+    "price": 50,
+    "url": "https://mienlace3.com",
+    "type": "subscription"
+  },
+  "extras": [
+    {
+      "id": "extra1",
+      "name": "Producto Extra Premium",
+      "price": 50,
+      "type": "extra"
+    },
+    {
+      "id": "extra2", 
+      "name": "Pack de Plantillas",
+      "price": 30,
+      "type": "extra"
+    },
+    {
+      "id": "extra4",
+      "name": "Kit de Recursos", 
+      "price": 25,
+      "type": "extra"
+    }
+  ]
+}

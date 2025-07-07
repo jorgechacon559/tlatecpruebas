@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estado del Pedido</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    .success-icon {
+      font-size: 64px;
+      color: #27ae60;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #27ae60;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .payment-status {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border-left: 4px solid #ddd;
+    }
+
+    .status-paid {
+      background-color: #d4edda;
+      border-left-color: #27ae60;
+      color: #155724;
+    }
+
+    .status-pending {
+      background-color: #fff3cd;
+      border-left-color: #ffc107;
+      color: #856404;
+    }
+
+    .status-info {
+      background-color: #d1ecf1;
+      border-left-color: #17a2b8;
+      color: #0c5460;
+    }
+
+    .btn {
+      background-color: #27ae60;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      margin: 10px 5px;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+
+    .order-summary {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-radius: 50%;
+      border-top-color: #27ae60;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .actions {
+      text-align: center;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">📋</div>
+    <h1>Estado de tu Pedido</h1>
+    
+    <div id="order-info">
+      <div class="loading"></div>
+      <p class="text-center">Cargando información del pedido...</p>
+    </div>
+
+    <div class="actions">
+      <a href="compra.html" class="btn">Realizar Otra Compra</a>
+      <a href="admin.html" class="btn btn-secondary">Ver Panel Admin</a>
+    </div>
+  </div>
+
+  <script>
+    // Obtener parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderNumber = urlParams.get('order');
+    const paymentType = urlParams.get('type'); // 'subscription' o 'extras'
+    const collectionStatus = urlParams.get('collection_status');
+    const paymentId = urlParams.get('payment_id');
+
+    console.log('Parámetros recibidos:', {
+      orderNumber,
+      paymentType,
+      collectionStatus,
+      paymentId
+    });
+
+    if (orderNumber) {
+      loadOrderStatus(orderNumber, paymentType, collectionStatus, paymentId);
+    } else {
+      document.getElementById('order-info').innerHTML = `
+        <div class="status-item status-pending">
+          <span>⚠️ No se encontró número de pedido</span>
+        </div>
+      `;
+    }
+
+    async function loadOrderStatus(orderNumber, paymentType, status, paymentId) {
+      try {
+        // Si hay confirmación de pago, procesarla primero
+        if (status === 'approved' && paymentId) {
+          await fetch('/api/payment-confirmed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: orderNumber,
+              paymentType: paymentType,
+              paymentId: paymentId,
+              status: status
+            })
+          });
+        }
+
+        // Obtener información completa del pedido
+        const response = await fetch(`/api/orders/status/${orderNumber}`);
+        const orderData = await response.json();
+
+        displayOrderStatus(orderData);
+
+      } catch (error) {
+        console.error('Error cargando estado del pedido:', error);
+        document.getElementById('order-info').innerHTML = `
+          <div class="status-item status-pending">
+            <span>❌ Error cargando información del pedido</span>
+          </div>
+        `;
+      }
+    }
+
+    function displayOrderStatus(order) {
+      let html = `
+        <div class="order-summary">
+          <h3>Pedido #${order.orderNumber}</h3>
+          <p><strong>Cliente:</strong> ${order.customer.nombre} ${order.customer.apellido}</p>
+          <p><strong>Email:</strong> ${order.customer.email}</p>
+          <p><strong>Fecha:</strong> ${new Date(order.fecha_pedido).toLocaleDateString('es-MX')}</p>
+        </div>
+        
+        <div class="payment-status">
+          <h3>Estado de Pagos</h3>
+      `;
+
+      // Estado de suscripción
+      if (order.subscription) {
+        const subStatus = order.subscriptionPaid ? 'status-paid' : 'status-pending';
+        const subIcon = order.subscriptionPaid ? '✅' : '⏳';
+        const subText = order.subscriptionPaid ? 'Pagado' : 'Pendiente de pago';
+        
+        html += `
+          <div class="status-item ${subStatus}">
+            <span>${subIcon} Suscripción: ${order.subscription.name} ($${order.subscription.price}/mes)</span>
+            <span>${subText}</span>
+          </div>
+        `;
+      }
+
+      // Estado de productos extra
+      if (order.extras && order.extras.length > 0) {
+        const extrasStatus = order.extrasPaid ? 'status-paid' : 'status-pending';
+        const extrasIcon = order.extrasPaid ? '✅' : '⏳';
+        const extrasText = order.extrasPaid ? 'Pagado' : 'Pendiente de pago';
+        const extrasTotal = order.extras.reduce((sum, item) => sum + item.price, 0);
+        
+        html += `
+          <div class="status-item ${extrasStatus}">
+            <span>${extrasIcon} Productos Extra (${order.extras.length} items - $${extrasTotal} total)</span>
+            <span>${extrasText}</span>
+          </div>
+        `;
+      }
+
+      // Estado general
+      const allPaid = order.subscriptionPaid && (order.extras.length === 0 || order.extrasPaid);
+      if (allPaid) {
+        html += `
+          <div class="status-item status-paid">
+            <span>🎉 <strong>¡Pedido completado! Correo de confirmación enviado</strong></span>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="status-item status-info">
+            <span>ℹ️ Completa todos los pagos para recibir acceso completo</span>
+          </div>
+        `;
+      }
+
+      html += '</div>';
+      
+      document.getElementById('order-info').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

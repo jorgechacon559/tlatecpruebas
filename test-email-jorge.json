@@ -1,0 +1,30 @@
+{
+  "subscription": {
+    "id": "sub2",
+    "name": "Paquete Intermedio",
+    "price": 25,
+    "url": "https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e081eb0197e6f4c94e0264",
+    "type": "subscription"
+  },
+  "extras": [
+    {
+      "id": "extra1",
+      "name": "Producto Extra Premium",
+      "price": 50,
+      "url": "https://mpago.la/33sgGGY",
+      "type": "extra"
+    },
+    {
+      "id": "extra3",
+      "name": "Curso Avanzado",
+      "price": 75,
+      "url": "",
+      "type": "extra"
+    }
+  ],
+  "customer": {
+    "nombre": "Jorge",
+    "apellido": "Chacón",
+    "email": "jorgechaconzarate@gmail.com"
+  }
+}

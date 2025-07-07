@@ -1,0 +1,28 @@
+{
+  "customer": {
+    "nombre": "Maria",
+    "apellido": "Rodriguez",
+    "email": "maria.rodriguez@ejemplo.com"
+  },
+  "subscription": {
+    "id": "sub2",
+    "name": "Paquete Intermedio",
+    "price": 25,
+    "url": "https://mienlace2.com",
+    "type": "subscription"
+  },
+  "extras": [
+    {
+      "id": "extra2",
+      "name": "Pack de Plantillas",
+      "price": 30,
+      "type": "extra"
+    },
+    {
+      "id": "extra3",
+      "name": "Curso Avanzado",
+      "price": 75,
+      "type": "extra"
+    }
+  ]
+}

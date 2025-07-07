@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmación de Pedido</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #27ae60;
+      margin-bottom: 30px;
+    }
+
+    .success-icon {
+      text-align: center;
+      font-size: 64px;
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+
+    .order-summary {
+      background-color: #f8f9fa;
+      padding: 25px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .order-item:last-child {
+      border-bottom: none;
+    }
+
+    .order-total {
+      font-weight: bold;
+      font-size: 18px;
+      color: #2c3e50;
+      border-top: 2px solid #27ae60;
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .customer-info {
+      background-color: #e8f4f8;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .status-info {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      background-color: #27ae60;
+      color: white;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin: 10px 10px 10px 0;
+      transition: background 0.3s ease;
+    }
+
+    .btn:hover {
+      background-color: #219150;
+    }
+
+    .btn-secondary {
+      background-color: #3498db;
+    }
+
+    .btn-secondary:hover {
+      background-color: #2980b9;
+    }
+
+    .email-sent {
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .center-buttons {
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="success-icon">✅</div>
+    <h1>¡Pedido Confirmado!</h1>
+
+    <div class="email-sent">
+      <strong>📧 Confirmación enviada:</strong> Hemos enviado un correo electrónico con los detalles de tu pedido a tu dirección registrada.
+    </div>
+
+    <div class="status-info">
+      <h3>🔄 Estado del Pago</h3>
+      <p><strong>Suscripción:</strong> <span id="subscription-status">Procesando...</span></p>
+      <p><strong>Productos únicos:</strong> <span id="extras-status">Procesando...</span></p>
+      <p><small>Los pagos pueden tardar unos minutos en confirmarse. Recibirás una notificación por correo cuando estén listos.</small></p>
+    </div>
+
+    <div class="order-summary">
+      <h3>📋 Resumen de tu Pedido</h3>
+      <div id="order-details">
+        <!-- Se llenará dinámicamente -->
+      </div>
+    </div>
+
+    <div class="customer-info">
+      <h3>👤 Datos del Cliente</h3>
+      <div id="customer-details">
+        <!-- Se llenará dinámicamente -->
+      </div>
+    </div>
+
+    <div class="center-buttons">
+      <a href="compra.html" class="btn">Realizar Nuevo Pedido</a>
+      <button class="btn btn-secondary" onclick="downloadReceipt()">Descargar Comprobante</button>
+    </div>
+  </div>
+
+  <script>
+    // Cargar datos del pedido desde localStorage
+    function loadOrderData() {
+      const orderData = localStorage.getItem('orderData');
+      
+      if (!orderData) {
+        document.body.innerHTML = `
+          <div class="container">
+            <h1>No se encontraron datos del pedido</h1>
+            <p>Por favor, realiza un nuevo pedido.</p>
+            <a href="compra.html" class="btn">Ir a Compras</a>
+          </div>
+        `;
+        return;
+      }
+
+      const cart = JSON.parse(orderData);
+      displayOrderSummary(cart);
+      displayCustomerInfo(cart.customer);
+      simulatePaymentProcessing();
+      sendConfirmationEmail(cart);
+    }
+
+    function displayOrderSummary(cart) {
+      const orderDiv = document.getElementById('order-details');
+      let html = '';
+      let totalRecurring = 0;
+      let totalUnique = 0;
+
+      // Suscripción
+      if (cart.subscription) {
+        html += `
+          <div class="order-item">
+            <span>${cart.subscription.name} (Suscripción Mensual)</span>
+            <span>$${cart.subscription.price} MXN/mes</span>
+          </div>
+        `;
+        totalRecurring = cart.subscription.price;
+      }
+
+      // Extras
+      cart.extras.forEach(extra => {
+        html += `
+          <div class="order-item">
+            <span>${extra.name} (Pago Único)</span>
+            <span>$${extra.price} MXN</span>
+          </div>
+        `;
+        totalUnique += extra.price;
+      });
+
+      html += `
+        <div class="order-total">
+          💳 Cargo recurrente: $${totalRecurring} MXN/mes<br>
+          💰 Cargo único: $${totalUnique} MXN<br>
+          📅 Fecha del pedido: ${new Date().toLocaleDateString('es-MX')}
+        </div>
+      `;
+
+      orderDiv.innerHTML = html;
+    }
+
+    function displayCustomerInfo(customer) {
+      const customerDiv = document.getElementById('customer-details');
+      customerDiv.innerHTML = `
+        <p><strong>Nombre:</strong> ${customer.nombre} ${customer.apellido}</p>
+        <p><strong>Email:</strong> ${customer.email}</p>
+        <p><strong>Fecha de registro:</strong> ${new Date().toLocaleDateString('es-MX')}</p>
+      `;
+    }
+
+    function simulatePaymentProcessing() {
+      // Simular el procesamiento de pagos
+      setTimeout(() => {
+        document.getElementById('subscription-status').innerHTML = '✅ Confirmado';
+        document.getElementById('subscription-status').style.color = '#27ae60';
+      }, 2000);
+
+      setTimeout(() => {
+        document.getElementById('extras-status').innerHTML = '✅ Confirmado';
+        document.getElementById('extras-status').style.color = '#27ae60';
+      }, 3000);
+    }
+
+    function sendConfirmationEmail(cart) {
+      // Simular envío de correo electrónico
+      const emailData = {
+        to: cart.customer.email,
+        subject: 'Confirmación de tu pedido - Suscripción Premium',
+        orderNumber: 'ORD-' + Date.now(),
+        items: [cart.subscription, ...cart.extras],
+        customer: cart.customer,
+        orderDate: new Date().toISOString()
+      };
+
+      // En un entorno real, aquí enviarías los datos a tu backend
+      console.log('Datos del correo:', emailData);
+      
+      // Simular guardado en base de datos
+      saveToDatabase(emailData);
+    }
+
+    function saveToDatabase(orderData) {
+      // Simular guardado en base de datos
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      existingOrders.push(orderData);
+      localStorage.setItem('orders', JSON.stringify(existingOrders));
+      
+      console.log('Pedido guardado en la base de datos:', orderData);
+    }
+
+    function downloadReceipt() {
+      const orderData = JSON.parse(localStorage.getItem('orderData'));
+      
+      const receiptContent = `
+COMPROBANTE DE PEDIDO
+=====================
+
+Cliente: ${orderData.customer.nombre} ${orderData.customer.apellido}
+Email: ${orderData.customer.email}
+Fecha: ${new Date().toLocaleDateString('es-MX')}
+
+PRODUCTOS:
+----------
+${orderData.subscription ? `${orderData.subscription.name} (Suscripción): $${orderData.subscription.price} MXN/mes\n` : ''}${orderData.extras.map(item => `${item.name} (Pago único): $${item.price} MXN`).join('\n')}
+
+TOTAL RECURRENTE: $${orderData.subscription ? orderData.subscription.price : 0} MXN/mes
+TOTAL ÚNICO: $${orderData.extras.reduce((sum, item) => sum + item.price, 0)} MXN
+
+¡Gracias por tu compra!
+      `;
+
+      const blob = new Blob([receiptContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comprobante-${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+
+    // Cargar datos al cargar la página
+    window.onload = loadOrderData;
+  </script>
+
+</body>
+</html>

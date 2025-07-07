@@ -1,0 +1,21 @@
+{
+  "customer": {
+    "nombre": "Juan",
+    "apellido": "Test",
+    "email": "test@ejemplo.com"
+  },
+  "subscription": {
+    "id": "sub1",
+    "name": "Paquete Premium",
+    "price": 10,
+    "type": "subscription"
+  },
+  "extras": [
+    {
+      "id": "extra1",
+      "name": "Producto Extra Premium",
+      "price": 50,
+      "type": "extra"
+    }
+  ]
+}
