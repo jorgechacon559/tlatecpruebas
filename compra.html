@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Suscripción y Productos Extra</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section h2 {
+      color: #2980b9;
+      margin-bottom: 15px;
+    }
+
+    .btn {
+      background-color: #27ae60;
+      color: white;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 10px;
+      transition: background 0.3s ease;
+    }
+
+    .btn:hover {
+      background-color: #219150;
+    }
+
+    .product {
+      border: 1px solid #dce4ec;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .product h3 {
+      margin: 0 0 5px;
+    }
+
+    .product p {
+      margin: 0 0 10px;
+      color: #555;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Bienvenido</h1>
+
+    <!-- Paso 1: Suscripción aquí ponemos el link para la suscripción  -->
+    <div class="section">
+      <h2>1. Suscríbete</h2>
+      <p>Accede a beneficios exclusivos con nuestra suscripción mensual por solo <strong>$10 MXN</strong>.</p>
+      <a href="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=TU_ID_DE_PLAN" class="btn" target="_blank"> 
+        Suscribirme ahora
+      </a>
+    </div>
+
+    <!-- Paso 2: Productos adicionales aquí el catálogo -->
+    <div class="section">
+      <h2>2. Agrega productos adicionales</h2>
+
+      <div class="product">
+        <h3>Producto 1</h3>
+        <p>Descripción breve del producto. Precio: <strong>$200 MXN</strong></p>
+        <a href="https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=PREF_ID_PRODUCTO1" class="btn" target="_blank">
+          Comprar Producto 1
+        </a>
+      </div>
+
+      <div class="product">
+        <h3>Producto 2</h3>
+        <p>Descripción breve del producto. Precio: <strong>$150 MXN</strong></p>
+        <a href="https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=PREF_ID_PRODUCTO2" class="btn" target="_blank">
+          Comprar Producto 2
+        </a>
+      </div>
+
+      <div class="product">
+        <h3>Producto 3</h3>
+        <p>Descripción breve del producto. Precio: <strong>$100 MXN</strong></p>
+        <a href="https://www.mercadopago.com.mx/checkout/v1/redirect?pref_id=PREF_ID_PRODUCTO3" class="btn" target="_blank">
+          Comprar Producto 3
+        </a>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
