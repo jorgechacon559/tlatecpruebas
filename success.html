@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pago Exitoso</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f5f8fc;
+      margin: 0;
+      padding: 40px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-radius: 50%;
+      border-top-color: #27ae60;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-message {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .btn {
+      background-color: #27ae60;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="success-icon">✅</div>
+    <h1>¡Pago Exitoso!</h1>
+    
+    <div id="processing" class="status-message">
+      <div class="loading"></div>
+      <p>Procesando tu pago y enviando confirmación por correo...</p>
+    </div>
+
+    <div id="completed" class="status-message" style="display: none;">
+      <p>✅ <strong>Pago confirmado y correo enviado</strong></p>
+      <p>Revisa tu bandeja de entrada para ver los detalles.</p>
+    </div>
+
+    <a href="compra.html" class="btn">Realizar Otra Compra</a>
+  </div>
+
+  <script>
+    // Obtener parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+    const orderNumber = urlParams.get('order');
+
+    console.log('Parámetros de Stripe:', {
+      sessionId,
+      orderNumber
+    });
+
+    // Con Stripe, solo necesitamos verificar que tengamos session_id y order
+    if (sessionId && orderNumber) {
+      console.log(`✅ Pago completado via Stripe`);
+      
+      // Obtener estado del pedido desde el backend
+      fetch(`/api/orders/status/${orderNumber}`)
+        .then(response => response.json())
+        .then(orderData => {
+          if (orderData.isPaid) {
+            console.log('✅ Pedido confirmado como pagado');
+            // Mostrar detalles del pedido
+            showOrderDetails(orderData);
+          } else {
+            console.log('⏳ Pedido aún pendiente');
+            showPendingMessage();
+          }
+        })
+        .catch(error => {
+          console.error('Error obteniendo estado del pedido:', error);
+          showErrorMessage();
+        });
+    } else {
+      console.log('❌ Faltan parámetros de Stripe');
+      showErrorMessage();
+    }
+    
+    function showOrderDetails(orderData) {
+      document.getElementById('processing').style.display = 'none';
+      document.getElementById('completed').style.display = 'block';
+      
+      let html = `
+        <h2>✅ ¡Pago Completado!</h2>
+        <p><strong>Pedido #${orderData.orderNumber}</strong></p>
+        <p><strong>Cliente:</strong> ${orderData.customer.nombre} ${orderData.customer.apellido}</p>
+        <p><strong>Email:</strong> ${orderData.customer.email}</p>
+        <br>
+        <h3>Productos adquiridos:</h3>
+      `;
+      
+      if (orderData.subscription) {
+        html += `<p>🔄 <strong>${orderData.subscription.name}</strong> - $${orderData.subscription.price} MXN/mes</p>`;
+      }
+      
+      if (orderData.extras && orderData.extras.length > 0) {
+        orderData.extras.forEach(extra => {
+          html += `<p>💎 <strong>${extra.name}</strong> - $${extra.price} MXN</p>`;
+        });
+      }
+      
+      html += `<br><p>Recibirás un correo de confirmación con todos los detalles.</p>`;
+      document.getElementById('completed').innerHTML = html;
+    }
+    
+    function showPendingMessage() {
+      document.getElementById('processing').innerHTML = 
+        '<p>⏳ Tu pago está siendo procesado. Recibirás un correo de confirmación en breve.</p>';
+    }
+    
+    function showErrorMessage() {
+      document.getElementById('processing').innerHTML = 
+        '<p>❌ Hubo un problema verificando tu pago. Por favor contacta a soporte.</p>';
+    }
+  </script>
+</body>
+</html>
