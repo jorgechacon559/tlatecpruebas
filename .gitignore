@@ -4,6 +4,12 @@ node_modules/
 # Configuración de Visual Studio Code
 .vscode/
 
+# Variables de entorno (CONTIENE CLAVES SECRETAS)
+.env
+.env.local
+.env.production
+.env.staging
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

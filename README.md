@@ -28,12 +28,30 @@ npm start
 
 ## 🔧 Configuración
 
-El archivo `.env` está incluido con todas las configuraciones necesarias:
+### 1. Variables de Entorno
+Copia el archivo de ejemplo y configura tus claves:
 
-- ✅ Claves de Stripe (Live/Producción)
-- ✅ Price IDs de productos configurados
-- ✅ Configuración de email (Gmail)
-- ✅ URL del webhook para ngrok
+```bash
+# Copiar archivo de ejemplo
+cp .env.example .env
+
+# Editar con tus claves reales
+# Necesitas configurar:
+# - Claves de Stripe (Secret Key y Publishable Key)
+# - Price IDs de tus productos en Stripe
+# - Credenciales de Gmail para envío de correos
+# - URL de tu aplicación (localhost o ngrok)
+```
+
+### 2. Configuración Requerida en .env:
+- ✅ **STRIPE_SECRET_KEY**: Tu clave secreta de Stripe
+- ✅ **STRIPE_PUBLISHABLE_KEY**: Tu clave pública de Stripe  
+- ✅ **STRIPE_PRICE_PAQUETE_1**: Price ID del Paquete 1
+- ✅ **STRIPE_PRICE_PAQUETE_2**: Price ID del Paquete 2
+- ✅ **STRIPE_PRICE_PAGINA_WEB**: Price ID de Página web
+- ✅ **STRIPE_PRICE_LOGOS**: Price ID de Logos
+- ✅ **EMAIL_USER**: Tu email de Gmail
+- ✅ **EMAIL_PASS**: App Password de Gmail
 
 ## 📦 Productos Disponibles
 
