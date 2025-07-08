@@ -1,21 +1,18 @@
 {
   "customer": {
-    "nombre": "Juan",
+    "nombre": "Maria",
     "apellido": "Test",
-    "email": "test@ejemplo.com"
+    "email": "maria@test.com"
   },
   "subscription": {
-    "id": "sub1",
-    "name": "Paquete Premium",
-    "price": 10,
-    "type": "subscription"
+    "name": "Suscripción Premium",
+    "price": 99,
+    "url": "https://mpago.la/1A5v3P3"
   },
   "extras": [
     {
-      "id": "extra1",
-      "name": "Producto Extra Premium",
-      "price": 50,
-      "type": "extra"
+      "name": "Ebook Premium",
+      "price": 15
     }
   ]
 }

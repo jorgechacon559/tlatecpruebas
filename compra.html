@@ -231,28 +231,20 @@
       <h2>Paso 1: Selecciona tu suscripción</h2>
       <p>Elige el paquete que mejor se adapte a tus necesidades:</p>
       
-      <div class="product" data-type="subscription" data-id="sub1" data-price="10" data-url="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e5a7880197e620da930045">
+      <div class="product" data-type="subscription" data-id="sub1" data-price="10">
         <div class="product-type recurring">SUSCRIPCIÓN</div>
-        <h3>Paquete Premium</h3>
+        <h3>Paquete 1</h3>
         <p>Perfecto para comenzar. Accede a beneficios exclusivos con nuestra suscripción mensual básica.</p>
-        <p><strong>$10 MXN/mes</strong></p>
-        <button class="btn" onclick="selectSubscription(this)">Seleccionar Premium</button>
+        <p><strong>$10.00 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Paquete 1</button>
       </div>
 
-      <div class="product" data-type="subscription" data-id="sub2" data-price="25" data-url="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e081eb0197e6f4c94e0264">
+      <div class="product" data-type="subscription" data-id="sub2" data-price="11">
         <div class="product-type recurring">SUSCRIPCIÓN</div>
-        <h3>Paquete Intermedio</h3>
+        <h3>Paquete 2</h3>
         <p>Mayor valor y funcionalidades. Ideal para usuarios que buscan más beneficios y herramientas avanzadas.</p>
-        <p><strong>$25 MXN/mes</strong></p>
-        <button class="btn" onclick="selectSubscription(this)">Seleccionar Intermedio</button>
-      </div>
-
-      <div class="product" data-type="subscription" data-id="sub3" data-price="50" data-url="https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e5a7880197e6f55dcd00d1">
-        <div class="product-type recurring">SUSCRIPCIÓN</div>
-        <h3>Paquete Avanzado</h3>
-        <p>La experiencia completa. Acceso total a todas las funciones premium y soporte prioritario.</p>
-        <p><strong>$50 MXN/mes</strong></p>
-        <button class="btn" onclick="selectSubscription(this)">Seleccionar Avanzado</button>
+        <p><strong>$11.00 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Paquete 2</button>
       </div>
 
       <button class="btn btn-secondary hidden" id="continue-to-extras" onclick="goToStep(2)">
@@ -265,35 +257,19 @@
       <h2>Paso 2: Productos adicionales (Opcional)</h2>
       <p>Agrega productos de pago único a tu pedido. Puedes seleccionar varios o ninguno:</p>
 
-      <div class="product" data-type="extra" data-id="extra1" data-price="2" data-url="https://mpago.la/33sgGGY">
+      <div class="product" data-type="extra" data-id="extra1" data-price="6">
         <div class="product-type">PAGO ÚNICO</div>
-        <h3>Producto Extra Premium</h3>
-        <p>Complemento premium para potenciar tu experiencia. Incluye funciones avanzadas y contenido exclusivo.</p>
-        <p><strong>$2 MXN</strong> (pago único)</p>
+        <h3>Pagina web</h3>
+        <p>Desarrollo completo de página web profesional. Incluye diseño responsivo, optimización SEO y hosting básico.</p>
+        <p><strong>$6.00 MXN</strong> (pago único)</p>
         <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
       </div>
 
-      <div class="product" data-type="extra" data-id="extra2" data-price="3" data-url="">
+      <div class="product" data-type="extra" data-id="extra2" data-price="5">
         <div class="product-type">PAGO ÚNICO</div>
-        <h3>Pack de Plantillas</h3>
-        <p>Colección de plantillas profesionales listas para usar. Ahorra tiempo y obtén resultados profesionales.</p>
-        <p><strong>$3 MXN</strong> (pago único)</p>
-        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
-      </div>
-
-      <div class="product" data-type="extra" data-id="extra3" data-price="4" data-url="">
-        <div class="product-type">PAGO ÚNICO</div>
-        <h3>Curso Avanzado</h3>
-        <p>Curso completo con certificación incluida. Aprende técnicas avanzadas de la mano de expertos.</p>
-        <p><strong>$4 MXN</strong> (pago único)</p>
-        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
-      </div>
-
-      <div class="product" data-type="extra" data-id="extra4" data-price="5" data-url="">
-        <div class="product-type">PAGO ÚNICO</div>
-        <h3>Kit de Recursos</h3>
-        <p>Conjunto de herramientas y recursos adicionales. Incluye guías, checklists y material de apoyo.</p>
-        <p><strong>$5 MXN</strong> (pago único)</p>
+        <h3>Logos</h3>
+        <p>Diseño de logo profesional con múltiples variaciones. Incluye archivos vectoriales y diferentes formatos.</p>
+        <p><strong>$5.00 MXN</strong> (pago único)</p>
         <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
       </div>
 
@@ -509,7 +485,7 @@
     }
 
     function processPayment() {
-      // Enviar datos al backend para crear pedido y obtener URLs de pago
+      // Enviar datos al backend para crear pedido y obtener URL de checkout de Stripe
       fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -528,36 +504,24 @@
             orderId: data.orderId,
             orderNumber: data.orderNumber,
             customerId: data.customerId,
-            paymentUrls: data.paymentUrls
+            sessionId: data.sessionId
           }));
           
           // Mostrar mensaje de procesamiento
-          let paymentMessage = '✅ Pedido registrado exitosamente!\n\nAhora procederemos con los pagos en MercadoPago:';
-          if (data.paymentUrls.subscriptionUrl) {
-            paymentMessage += '\n• Suscripción mensual ($' + data.totalRecurrente + ' MXN/mes)';
+          let paymentMessage = '✅ Pedido registrado exitosamente!\n\nAhora procederemos con el pago seguro en Stripe:';
+          if (data.totalRecurrente > 0) {
+            paymentMessage += '\n• Suscripción mensual: $' + data.totalRecurrente + ' MXN/mes';
           }
-          if (data.paymentUrls.extrasUrl) {
-            paymentMessage += '\n• Productos adicionales ($' + data.totalUnico + ' MXN pago único)';
+          if (data.totalUnico > 0) {
+            paymentMessage += '\n• Productos adicionales: $' + data.totalUnico + ' MXN (pago único)';
           }
-          paymentMessage += '\n\n¡Recibirás un correo de confirmación después del pago!';
+          paymentMessage += '\n\nSerás redirigido a Stripe para completar el pago de forma segura.';
           
           alert(paymentMessage);
           
-          // Abrir MercadoPago para suscripción (URL estática)
-          if (data.paymentUrls.subscriptionUrl) {
-            const subscriptionUrl = data.paymentUrls.subscriptionUrl + '&external_reference=' + data.orderNumber;
-            window.open(subscriptionUrl, '_blank', 'noopener,noreferrer');
-          }
-          
-          // Abrir MercadoPago para extras (URL dinámica)
-          if (data.paymentUrls.extrasUrl) {
-            setTimeout(() => {
-              window.open(data.paymentUrls.extrasUrl, '_blank', 'noopener,noreferrer');
-            }, 1500);
-          }
-          
-          // NO redirigir automáticamente - MercadoPago redirigirá después del pago
-          // El success.html se abrirá cuando MercadoPago confirme el pago
+          // Redirigir directamente a Stripe Checkout
+          console.log('🔗 Redirigiendo a Stripe Checkout:', data.checkoutUrl);
+          window.location.href = data.checkoutUrl;
           
         } else {
           alert('❌ Error al procesar el pedido: ' + (data.error || 'Error desconocido'));

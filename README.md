@@ -1,23 +1,113 @@
-# Sistema de Suscripciones con MercadoPago
+# 🛒 Sistema de Suscripciones con Stripe
 
-Este es un sistema de prueba que permite manejar suscripciones recurrentes y productos de pago único a través de MercadoPago.
+Sistema completo de carrito de compras con suscripciones recurrentes y productos únicos, integrado con Stripe para pagos seguros y confiables.
 
-## 🚀 Características
+## ✨ Características
 
-- **Carrito inteligente**: Distingue entre pagos recurrentes (suscripciones) y únicos (productos)
-- **Proceso paso a paso**: Guía al usuario a través de 4 pasos claros
-- **Integración con MercadoPago**: Links reales a MercadoPago para procesar pagos
-- **Confirmación automática**: Página de confirmación con resumen del pedido
-- **Simulación de email**: Sistema que simula el envío de confirmaciones por correo
-- **Almacenamiento local**: Guarda los datos del pedido para pruebas
+- 🔄 **Suscripciones mensuales** con Stripe
+- 💳 **Productos de pago único** en el mismo checkout
+- 📧 **Envío automático de correos** de confirmación
+- 🗄️ **Base de datos SQLite** (sin configuración adicional)
+- 🎯 **Webhook automático** para confirmación de pagos
+- 📱 **Interfaz responsiva** y fácil de usar
+- 🔒 **Pagos seguros** procesados por Stripe
 
-## 📁 Archivos del Sistema
+## 🚀 Instalación Rápida
 
-### `compra.html`
-Página principal del sistema con 4 pasos:
-1. **Selección de suscripción**: El usuario elige su plan mensual
-2. **Productos adicionales**: Puede agregar productos de pago único
-3. **Datos personales**: Formulario con nombre, apellido y email
+```bash
+# Clonar repositorio
+git clone <tu-repositorio>
+cd sistema-suscripciones-stripe
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor
+npm start
+```
+
+## 🔧 Configuración
+
+El archivo `.env` está incluido con todas las configuraciones necesarias:
+
+- ✅ Claves de Stripe (Live/Producción)
+- ✅ Price IDs de productos configurados
+- ✅ Configuración de email (Gmail)
+- ✅ URL del webhook para ngrok
+
+## 📦 Productos Disponibles
+
+### Suscripciones (Recurrentes)
+- **Paquete 1**: $10.00 MXN/mes
+- **Paquete 2**: $11.00 MXN/mes
+
+### Productos Únicos
+- **Página web**: $6.00 MXN
+- **Logos**: $5.00 MXN
+
+## 🌐 URLs del Sistema
+
+- **Carrito**: http://localhost:3000/compra.html
+- **Estado de pedidos**: http://localhost:3000/order-status.html
+- **Admin**: http://localhost:3000/admin.html
+- **API Health**: http://localhost:3000/api/health
+
+## 📋 Scripts Disponibles
+
+```bash
+npm start          # Iniciar servidor
+npm run dev        # Desarrollo con nodemon
+npm run setup      # Instalar dependencias
+npm run stripe:info # Consultar productos de Stripe
+```
+
+## 🔍 Herramientas de Debugging
+
+### Consultar productos de Stripe
+```bash
+npm run stripe:info
+```
+Muestra todos los productos y precios configurados directamente desde Stripe.
+
+## 🎯 Flujo de Compra
+
+1. Cliente selecciona productos en el carrito
+2. Sistema crea Stripe Checkout Session
+3. Cliente completa pago en Stripe
+4. Webhook confirma pago automáticamente
+5. Se envía correo de confirmación
+6. Pedido queda registrado en base de datos
+
+## 🗄️ Base de Datos
+
+SQLite se crea automáticamente con estas tablas:
+- `customers`: Datos de clientes
+- `pedidos`: Información completa de pedidos
+
+## 📧 Configuración de Email
+
+Configurado para envío automático vía Gmail:
+- Correos de confirmación tras pago exitoso
+- Resumen completo del pedido
+- Información de contacto incluida
+
+## 🔒 Seguridad
+
+- Claves secretas en variables de entorno
+- Verificación de webhooks de Stripe
+- Validación de pagos en backend
+- Logs detallados para auditoría
+
+## 🆘 Soporte
+
+Para problemas o dudas:
+1. Revisar logs del servidor (muy detallados)
+2. Verificar configuración en `.env`
+3. Comprobar que Stripe esté correctamente configurado
+
+## 📄 Licencia
+
+MIT License - Libre para uso comercial y personal.
 4. **Resumen y checkout**: Confirmación final antes del pago
 
 ### `confirmacion.html`

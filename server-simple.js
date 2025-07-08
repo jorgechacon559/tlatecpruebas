@@ -3,13 +3,10 @@ const sqlite3 = require('sqlite3').verbose();
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const path = require('path');
-const mercadopago = require('mercadopago');
 require('dotenv').config();
 
-// Configuración de MercadoPago
-mercadopago.configure({
-  access_token: process.env.MERCADOPAGO_ACCESS_TOKEN
-});
+// Inicializar Stripe después de cargar las variables de entorno
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Para webhooks de MercadoPago
 app.use(express.static('.'));
 
 // Base de datos SQLite (se crea automáticamente)
@@ -94,7 +92,7 @@ function initDatabase() {
   });
 }
 
-// Endpoint para crear pedido y generar URLs de pago
+// Endpoint para crear pedido y generar checkout de Stripe
 app.post('/api/orders', async (req, res) => {
   const orderData = req.body;
   const ordenNumero = 'ORD-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
@@ -137,74 +135,74 @@ app.post('/api/orders', async (req, res) => {
       });
     });
 
-    // Crear URLs de pago
-    const paymentUrls = {};
-    
-    // 1. URL de suscripción (según el paquete seleccionado)
-    if (orderData.subscription) {
-      let subscriptionBaseUrl = orderData.subscription.url;
-      
-      // Si la URL está vacía o es placeholder, usar URL por defecto
-      if (!subscriptionBaseUrl || subscriptionBaseUrl.includes('mienlace')) {
-        subscriptionBaseUrl = process.env.MERCADOPAGO_SUBSCRIPTION_URL || 'https://mienlace1.com';
-      }
-      
-      const successUrl = encodeURIComponent(`${process.env.APP_URL || 'http://localhost:3000'}/order-status.html?order=${ordenNumero}&type=subscription`);
-      const failureUrl = encodeURIComponent(`${process.env.APP_URL || 'http://localhost:3000'}/compra.html?error=payment_failed`);
-      
-      // Si es una URL real de MercadoPago, agregar parámetros de retorno
-      if (subscriptionBaseUrl.includes('mercadopago.com')) {
-        paymentUrls.subscriptionUrl = `${subscriptionBaseUrl}&back_url_success=${successUrl}&back_url_failure=${failureUrl}`;
-      } else {
-        // Para URLs placeholder, solo guardar la URL base (el usuario la reemplazará)
-        paymentUrls.subscriptionUrl = subscriptionBaseUrl;
-      }
-    }
-    
-    // 2. URL de productos extras (dinámica via MercadoPago API)
-    if (orderData.extras && orderData.extras.length > 0) {
-      const preferenceData = {
-        items: orderData.extras.map(item => ({
-          title: item.name,
-          unit_price: item.price,
-          quantity: 1,
-          currency_id: 'MXN'
-        })),
-        payer: {
-          name: orderData.customer.nombre,
-          surname: orderData.customer.apellido,
-          email: orderData.customer.email
-        },
-        external_reference: ordenNumero,
-        back_urls: {
-          success: `${process.env.APP_URL || 'http://localhost:3000'}/order-status.html?order=${ordenNumero}&type=extras`,
-          failure: `${process.env.APP_URL || 'http://localhost:3000'}/compra.html?error=payment_failed`,
-          pending: `${process.env.APP_URL || 'http://localhost:3000'}/compra.html?status=pending`
-        },
-        notification_url: `${process.env.APP_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`
-      };
+    // Mapear productos a Price IDs de Stripe
+    const priceMapping = {
+      'Paquete 1': process.env.STRIPE_PRICE_PAQUETE_1,
+      'Paquete 2': process.env.STRIPE_PRICE_PAQUETE_2,
+      'Pagina web': process.env.STRIPE_PRICE_PAGINA_WEB,
+      'Logos': process.env.STRIPE_PRICE_LOGOS
+    };
 
-      console.log('🔍 Creando preferencia con datos:', JSON.stringify(preferenceData, null, 2));
-      
-      const response = await mercadopago.preferences.create(preferenceData);
-      paymentUrls.extrasUrl = response.body.init_point;
-      
-      console.log('✅ Preferencia de MercadoPago creada:', response.body.id);
-      console.log('🔗 URL generada:', response.body.init_point);
+    // Crear line_items para Stripe
+    const lineItems = [];
+    
+    // Agregar suscripción si existe
+    if (orderData.subscription) {
+      const priceId = priceMapping[orderData.subscription.name];
+      if (priceId) {
+        lineItems.push({
+          price: priceId,
+          quantity: 1
+        });
+      }
     }
+    
+    // Agregar productos extras
+    orderData.extras.forEach(extra => {
+      const priceId = priceMapping[extra.name];
+      if (priceId) {
+        lineItems.push({
+          price: priceId,
+          quantity: 1
+        });
+      }
+    });
+
+    console.log('🔍 Creando Stripe Checkout con line_items:', lineItems);
+
+    // Determinar el modo del checkout
+    const hasSubscription = orderData.subscription;
+    const mode = hasSubscription ? 'subscription' : 'payment';
+
+    // Crear Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      line_items: lineItems,
+      mode: mode,
+      success_url: `${process.env.APP_URL}/order-status.html?session_id={CHECKOUT_SESSION_ID}&order=${ordenNumero}`,
+      cancel_url: `${process.env.APP_URL}/compra.html?canceled=true`,
+      customer_email: orderData.customer.email,
+      metadata: {
+        order_number: ordenNumero,
+        customer_id: customerId.toString()
+      }
+    });
+
+    console.log('✅ Stripe Checkout creado:', session.id);
+    console.log('🔗 URL del checkout:', session.url);
     
     res.json({
       success: true,
       orderId: orderId,
       orderNumber: ordenNumero,
       customerId: customerId,
-      paymentUrls: paymentUrls,
+      checkoutUrl: session.url,
+      sessionId: session.id,
       totalRecurrente: totalRecurrente,
       totalUnico: totalUnico
     });
     
   } catch (error) {
-    console.error('❌ Error creando pedido:', error);
+    console.error('❌ Error creando pedido con Stripe:', error);
     res.status(500).json({ error: 'Error creando pedido: ' + error.message });
   }
 });
@@ -274,13 +272,13 @@ async function sendConfirmationEmail(orderData, orderNumber) {
       </div>
       
       <div class="important">
-        <h3>🔄 Siguiente Paso</h3>
-        <p>Se han abierto las páginas de <strong>MercadoPago</strong> para completar tus pagos:</p>
+        <h3>✅ Pago Completado</h3>
+        <p>Tu pago ha sido procesado exitosamente a través de <strong>Stripe</strong>.</p>
         <ul>
-          ${subscription ? '<li><strong>Suscripción mensual</strong> - Se procesará automáticamente cada mes</li>' : ''}
-          ${extras.length > 0 ? '<li><strong>Productos adicionales</strong> - Pago único</li>' : ''}
+          ${subscription ? '<li><strong>Suscripción mensual</strong> - Activada y funcionando</li>' : ''}
+          ${extras.length > 0 ? '<li><strong>Productos adicionales</strong> - Acceso inmediato disponible</li>' : ''}
         </ul>
-        <p>Una vez que completes los pagos en MercadoPago, tendrás acceso inmediato a tus productos.</p>
+        <p>¡Ya tienes acceso completo a todos tus productos y servicios!</p>
       </div>
       
       <div class="order-details">
@@ -362,65 +360,205 @@ app.get('/api/admin/orders', (req, res) => {
   });
 });
 
-// Webhook de MercadoPago para notificaciones de pago
-app.post('/api/webhooks/mercadopago', express.raw({type: 'application/json'}), async (req, res) => {
-  try {
-    const notification = req.body;
-    console.log('🔔 Webhook recibido de MercadoPago:', notification);
-    
-    // Procesar notificaciones de pago
-    if (notification.type === 'payment' && notification.data && notification.data.id) {
-      const paymentId = notification.data.id;
-      console.log('💳 Procesando pago ID:', paymentId);
-      
-      try {
-        // Consultar detalles del pago desde MercadoPago API
-        const paymentResponse = await mercadopago.payment.findById(paymentId);
-        const payment = paymentResponse.body;
-        
-        console.log('📋 Detalles del pago:', {
-          id: payment.id,
-          status: payment.status,
-          external_reference: payment.external_reference,
-          transaction_amount: payment.transaction_amount
-        });
-        
-        if (payment.status === 'approved' && payment.external_reference) {
-          const orderNumber = payment.external_reference;
-          
-          // Determinar tipo de pago basado en el contexto
-          // Para productos extras, el external_reference viene del checkout dinámico
-          const paymentType = 'extras'; // Los webhooks generalmente son para extras
-          
-          // Simular llamada al endpoint de confirmación
-          const confirmationData = {
-            orderNumber: orderNumber,
-            paymentType: paymentType,
-            paymentId: payment.id,
-            status: payment.status
-          };
-          
-          console.log('🔄 Confirmando pago automáticamente:', confirmationData);
-          
-          // Llamar a la lógica de confirmación directamente
-          await processPaymentConfirmation(confirmationData);
-        }
-        
-      } catch (mpError) {
-        console.error('❌ Error consultando pago en MercadoPago:', mpError);
-      }
-    }
-    
-    res.status(200).send('OK');
-  } catch (error) {
-    console.error('❌ Error procesando webhook:', error);
-    res.status(500).send('Error');
-  }
+// Endpoint de prueba para webhooks
+app.get('/api/webhooks/test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Webhook endpoint accessible',
+    timestamp: new Date().toISOString(),
+    ngrok_url: process.env.APP_URL
+  });
 });
 
-// Función auxiliar para procesar confirmación de pago
+// Función para manejar checkout completado de Stripe
+async function handleCheckoutCompleted(session) {
+  try {
+    console.log('🔍 Procesando checkout completado:', session.id);
+    console.log('📋 Metadata:', session.metadata);
+    
+    const orderNumber = session.metadata.order_number;
+    
+    if (!orderNumber) {
+      console.error('❌ No se encontró order_number en metadata');
+      return;
+    }
+    
+    // Buscar el pedido en la base de datos
+    const order = await new Promise((resolve, reject) => {
+      db.get(`
+        SELECT p.*, c.nombre, c.apellido, c.email
+        FROM pedidos p
+        JOIN customers c ON p.customer_id = c.id
+        WHERE p.orden_numero = ?
+      `, [orderNumber], (err, row) => {
+        if (err) return reject(err);
+        resolve(row);
+      });
+    });
+    
+    if (!order) {
+      console.error(`❌ Pedido no encontrado: ${orderNumber}`);
+      return;
+    }
+    
+    console.log(`✅ Pedido encontrado: ${orderNumber}`);
+    
+    // Obtener detalles del checkout desde Stripe
+    const checkoutSession = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ['line_items', 'subscription']
+    });
+    
+    console.log('🔍 Detalles del checkout:', {
+      mode: checkoutSession.mode,
+      payment_status: checkoutSession.payment_status,
+      subscription_id: checkoutSession.subscription?.id
+    });
+    
+    // Determinar qué se pagó basado en el modo y line_items
+    const orderData = JSON.parse(order.datos_originales);
+    const hasSubscription = orderData.subscription;
+    const hasExtras = orderData.extras && orderData.extras.length > 0;
+    
+    if (checkoutSession.mode === 'subscription') {
+      // Es una suscripción, marcar como pagada
+      await new Promise((resolve, reject) => {
+        db.run(
+          'UPDATE pedidos SET subscription_paid = 1, payment_id_subscription = ? WHERE orden_numero = ?',
+          [checkoutSession.subscription?.id || session.id, orderNumber],
+          function(err) {
+            if (err) return reject(err);
+            resolve();
+          }
+        );
+      });
+      console.log(`✅ Suscripción marcada como pagada para ${orderNumber}`);
+    } else if (checkoutSession.mode === 'payment') {
+      // Es un pago único, marcar extras como pagados
+      await new Promise((resolve, reject) => {
+        db.run(
+          'UPDATE pedidos SET extras_paid = 1, payment_id_extras = ? WHERE orden_numero = ?',
+          [session.payment_intent || session.id, orderNumber],
+          function(err) {
+            if (err) return reject(err);
+            resolve();
+          }
+        );
+      });
+      console.log(`✅ Extras marcados como pagados para ${orderNumber}`);
+    }
+    
+    // Verificar si todos los pagos están completos
+    const updatedOrder = await new Promise((resolve, reject) => {
+      db.get(`
+        SELECT * FROM pedidos WHERE orden_numero = ?
+      `, [orderNumber], (err, row) => {
+        if (err) return reject(err);
+        resolve(row);
+      });
+    });
+    
+    const subscriptionComplete = !hasSubscription || updatedOrder.subscription_paid === 1;
+    const extrasComplete = !hasExtras || updatedOrder.extras_paid === 1;
+    const allPaymentsComplete = subscriptionComplete && extrasComplete;
+    
+    console.log(`📊 Estado de pagos para ${orderNumber}:`, {
+      hasSubscription,
+      hasExtras,
+      subscriptionPaid: updatedOrder.subscription_paid === 1,
+      extrasPaid: updatedOrder.extras_paid === 1,
+      allComplete: allPaymentsComplete
+    });
+    
+    // Si todos los pagos están completos, marcar como confirmado y enviar correo
+    if (allPaymentsComplete) {
+      await new Promise((resolve, reject) => {
+        db.run(
+          'UPDATE pedidos SET estado = ? WHERE orden_numero = ?',
+          ['confirmed', orderNumber],
+          function(err) {
+            if (err) return reject(err);
+            resolve();
+          }
+        );
+      });
+      
+      // Enviar correo de confirmación
+      await sendConfirmationEmail(orderData, orderNumber);
+      
+      console.log(`🎉 TODOS los pagos completos para ${orderNumber} - Correo enviado automáticamente`);
+    } else {
+      console.log(`⏳ Pago parcial para ${orderNumber} - Esperando otros pagos`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error manejando checkout completado:', error);
+  }
+}
+
+// Webhook de Stripe para eventos de pago
+app.post('/api/webhooks/stripe', express.raw({type: 'application/json'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  
+  let event;
+  
+  try {
+    if (endpointSecret) {
+      // Verificar firma del webhook en producción
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } else {
+      // Para desarrollo, solo parseamos el JSON sin verificar firma
+      event = JSON.parse(req.body);
+    }
+    
+    console.log('🔔 Webhook recibido de Stripe:', event.type);
+    
+    // Manejar diferentes tipos de eventos
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('✅ Checkout completado:', session.id);
+        await handleCheckoutCompleted(session);
+        break;
+        
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        console.log('💳 Pago único exitoso:', paymentIntent.id);
+        // Para pagos únicos sin checkout, podríamos manejar aquí si es necesario
+        break;
+        
+      case 'invoice.payment_succeeded':
+        const invoice = event.data.object;
+        console.log('🔄 Pago de suscripción exitoso:', invoice.id);
+        // Para pagos recurrentes de suscripción
+        break;
+        
+      case 'customer.subscription.created':
+        const subscription = event.data.object;
+        console.log('📅 Suscripción creada:', subscription.id);
+        break;
+        
+      case 'customer.subscription.updated':
+        const updatedSubscription = event.data.object;
+        console.log('🔄 Suscripción actualizada:', updatedSubscription.id);
+        break;
+        
+      default:
+        console.log(`❓ Evento no manejado: ${event.type}`);
+    }
+    
+    res.json({received: true});
+    
+  } catch (err) {
+    console.error('❌ Error procesando webhook de Stripe:', err);
+    res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+});
+// Función auxiliar para procesar confirmación de pago (mantenida para compatibilidad)
 async function processPaymentConfirmation({ orderNumber, paymentType, paymentId, status }) {
   try {
+    console.log(`� Procesando confirmación de pago: ${orderNumber} (${paymentType})`);
+    
     // Buscar el pedido
     const order = await new Promise((resolve, reject) => {
       db.get(`
@@ -440,17 +578,18 @@ async function processPaymentConfirmation({ orderNumber, paymentType, paymentId,
     }
 
     // Verificar que el pago fue aprobado
-    if (status !== 'approved') {
+    if (status !== 'approved' && status !== 'succeeded') {
       console.log(`⚠️ Pago no aprobado para pedido ${orderNumber}: ${status}`);
       return;
     }
 
     // Actualizar el estado específico del tipo de pago
     const updateField = paymentType === 'subscription' ? 'subscription_paid = 1' : 'extras_paid = 1';
+    const paymentIdField = paymentType === 'subscription' ? 'payment_id_subscription' : 'payment_id_extras';
     
     await new Promise((resolve, reject) => {
       db.run(
-        `UPDATE pedidos SET ${updateField}, payment_id_${paymentType} = ? WHERE orden_numero = ?`,
+        `UPDATE pedidos SET ${updateField}, ${paymentIdField} = ? WHERE orden_numero = ?`,
         [paymentId, orderNumber],
         function(err) {
           if (err) return reject(err);
@@ -606,8 +745,8 @@ async function startServer() {
       console.log(`📱 Carrito: http://localhost:${PORT}/compra.html`);
       console.log(`🗄️  Base de datos: SQLite (${dbPath})`);
       console.log(`📧 Email: ${emailConfigured ? '✅ Configurado' : '⚠️  No configurado'}`);
-      console.log(`💳 MercadoPago: ✅ Enlaces directos funcionando`);
-      console.log(`\n🎯 ¡Todo listo para recibir pedidos!`);
+      console.log(`💳 Stripe: ✅ Configurado y funcionando`);
+      console.log(`\n🎯 ¡Todo listo para recibir pedidos con Stripe!`);
     });
   } catch (error) {
     console.error('❌ Error iniciando servidor:', error);

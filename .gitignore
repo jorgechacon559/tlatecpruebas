@@ -1,0 +1,21 @@
+# Dependencias de Node.js
+node_modules/
+
+# Configuración de Visual Studio Code
+.vscode/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Base de datos SQLite (temporal - se regenera automáticamente)
+*.db
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.temp
