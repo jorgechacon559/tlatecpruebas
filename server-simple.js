@@ -70,12 +70,23 @@ function initDatabase() {
           total_recurrente DECIMAL(10,2) DEFAULT 0,
           total_unico DECIMAL(10,2) DEFAULT 0,
           estado VARCHAR(50) DEFAULT 'pending',
+          subscription_paid INTEGER DEFAULT 0,
+          extras_paid INTEGER DEFAULT 0,
+          payment_id_subscription VARCHAR(255),
+          payment_id_extras VARCHAR(255),
           fecha_pedido DATETIME DEFAULT CURRENT_TIMESTAMP,
           datos_originales TEXT,
           FOREIGN KEY (customer_id) REFERENCES customers (id)
         )
       `, (err) => {
         if (err) return reject(err);
+        
+        // Agregar columnas si no existen (para bases de datos existentes)
+        db.run(`ALTER TABLE pedidos ADD COLUMN subscription_paid INTEGER DEFAULT 0`, () => {});
+        db.run(`ALTER TABLE pedidos ADD COLUMN extras_paid INTEGER DEFAULT 0`, () => {});
+        db.run(`ALTER TABLE pedidos ADD COLUMN payment_id_subscription VARCHAR(255)`, () => {});
+        db.run(`ALTER TABLE pedidos ADD COLUMN payment_id_extras VARCHAR(255)`, () => {});
+        
         console.log('✅ Base de datos SQLite inicializada');
         resolve();
       });
@@ -173,10 +184,13 @@ app.post('/api/orders', async (req, res) => {
         notification_url: `${process.env.APP_URL || 'http://localhost:3000'}/api/webhooks/mercadopago`
       };
 
+      console.log('🔍 Creando preferencia con datos:', JSON.stringify(preferenceData, null, 2));
+      
       const response = await mercadopago.preferences.create(preferenceData);
       paymentUrls.extrasUrl = response.body.init_point;
       
       console.log('✅ Preferencia de MercadoPago creada:', response.body.id);
+      console.log('🔗 URL generada:', response.body.init_point);
     }
     
     res.json({
@@ -354,8 +368,48 @@ app.post('/api/webhooks/mercadopago', express.raw({type: 'application/json'}), a
     const notification = req.body;
     console.log('🔔 Webhook recibido de MercadoPago:', notification);
     
-    // Aquí puedes procesar las notificaciones de MercadoPago
-    // Por ejemplo, actualizar el estado del pedido cuando se confirme el pago
+    // Procesar notificaciones de pago
+    if (notification.type === 'payment' && notification.data && notification.data.id) {
+      const paymentId = notification.data.id;
+      console.log('💳 Procesando pago ID:', paymentId);
+      
+      try {
+        // Consultar detalles del pago desde MercadoPago API
+        const paymentResponse = await mercadopago.payment.findById(paymentId);
+        const payment = paymentResponse.body;
+        
+        console.log('📋 Detalles del pago:', {
+          id: payment.id,
+          status: payment.status,
+          external_reference: payment.external_reference,
+          transaction_amount: payment.transaction_amount
+        });
+        
+        if (payment.status === 'approved' && payment.external_reference) {
+          const orderNumber = payment.external_reference;
+          
+          // Determinar tipo de pago basado en el contexto
+          // Para productos extras, el external_reference viene del checkout dinámico
+          const paymentType = 'extras'; // Los webhooks generalmente son para extras
+          
+          // Simular llamada al endpoint de confirmación
+          const confirmationData = {
+            orderNumber: orderNumber,
+            paymentType: paymentType,
+            paymentId: payment.id,
+            status: payment.status
+          };
+          
+          console.log('🔄 Confirmando pago automáticamente:', confirmationData);
+          
+          // Llamar a la lógica de confirmación directamente
+          await processPaymentConfirmation(confirmationData);
+        }
+        
+      } catch (mpError) {
+        console.error('❌ Error consultando pago en MercadoPago:', mpError);
+      }
+    }
     
     res.status(200).send('OK');
   } catch (error) {
@@ -364,10 +418,8 @@ app.post('/api/webhooks/mercadopago', express.raw({type: 'application/json'}), a
   }
 });
 
-// Endpoint para confirmar pago (llamado desde success.html)
-app.post('/api/payment-confirmed', async (req, res) => {
-  const { orderNumber, paymentType } = req.body;
-  
+// Función auxiliar para procesar confirmación de pago
+async function processPaymentConfirmation({ orderNumber, paymentType, paymentId, status }) {
   try {
     // Buscar el pedido
     const order = await new Promise((resolve, reject) => {
@@ -383,35 +435,102 @@ app.post('/api/payment-confirmed', async (req, res) => {
     });
     
     if (!order) {
-      return res.status(404).json({ error: 'Pedido no encontrado' });
+      console.log(`⚠️ Pedido no encontrado: ${orderNumber}`);
+      return;
     }
+
+    // Verificar que el pago fue aprobado
+    if (status !== 'approved') {
+      console.log(`⚠️ Pago no aprobado para pedido ${orderNumber}: ${status}`);
+      return;
+    }
+
+    // Actualizar el estado específico del tipo de pago
+    const updateField = paymentType === 'subscription' ? 'subscription_paid = 1' : 'extras_paid = 1';
     
-    // Actualizar estado del pedido
     await new Promise((resolve, reject) => {
       db.run(
-        'UPDATE pedidos SET estado = ? WHERE orden_numero = ?',
-        ['confirmed', orderNumber],
+        `UPDATE pedidos SET ${updateField}, payment_id_${paymentType} = ? WHERE orden_numero = ?`,
+        [paymentId, orderNumber],
         function(err) {
           if (err) return reject(err);
           resolve();
         }
       );
     });
+
+    // Verificar si AMBOS pagos están completos
+    const updatedOrder = await new Promise((resolve, reject) => {
+      db.get(`
+        SELECT p.*, c.nombre, c.apellido, c.email
+        FROM pedidos p
+        JOIN customers c ON p.customer_id = c.id
+        WHERE p.orden_numero = ?
+      `, [orderNumber], (err, row) => {
+        if (err) return reject(err);
+        resolve(row);
+      });
+    });
+
+    const orderData = JSON.parse(updatedOrder.datos_originales);
+    const hasSubscription = orderData.subscription;
+    const hasExtras = orderData.extras && orderData.extras.length > 0;
     
-    // Enviar correo de confirmación SOLO después del pago
-    const orderData = JSON.parse(order.datos_originales);
-    await sendConfirmationEmail(orderData, orderNumber);
+    // Determinar si todos los pagos necesarios están completos
+    const subscriptionComplete = !hasSubscription || updatedOrder.subscription_paid === 1;
+    const extrasComplete = !hasExtras || updatedOrder.extras_paid === 1;
+    const allPaymentsComplete = subscriptionComplete && extrasComplete;
+
+    console.log(`📊 Estado de pagos para ${orderNumber}:`, {
+      hasSubscription,
+      hasExtras,
+      subscriptionPaid: updatedOrder.subscription_paid === 1,
+      extrasPaid: updatedOrder.extras_paid === 1,
+      allComplete: allPaymentsComplete
+    });
+
+    // Solo enviar correo si TODOS los pagos están completos
+    if (allPaymentsComplete) {
+      // Actualizar estado general a confirmed
+      await new Promise((resolve, reject) => {
+        db.run(
+          'UPDATE pedidos SET estado = ? WHERE orden_numero = ?',
+          ['confirmed', orderNumber],
+          function(err) {
+            if (err) return reject(err);
+            resolve();
+          }
+        );
+      });
+
+      // Enviar correo de confirmación
+      await sendConfirmationEmail(orderData, orderNumber);
+      
+      console.log(`🎉 TODOS los pagos completos para ${orderNumber} - Correo enviado automáticamente`);
+    } else {
+      console.log(`⏳ Pago parcial para ${orderNumber} (${paymentType}) - Esperando otros pagos`);
+    }
     
-    console.log(`✅ Pago confirmado para pedido ${orderNumber} (${paymentType})`);
+  } catch (error) {
+    console.error('❌ Error procesando confirmación automática:', error);
+  }
+}
+
+// Endpoint para confirmar pago (llamado manualmente desde order-status.html)
+app.post('/api/payment-confirmed', async (req, res) => {
+  const { orderNumber, paymentType, paymentId, status } = req.body;
+  
+  try {
+    await processPaymentConfirmation({ orderNumber, paymentType, paymentId, status });
     
     res.json({ 
       success: true, 
-      message: 'Pago confirmado y correo enviado',
+      message: 'Pago procesado correctamente',
       orderNumber: orderNumber
     });
     
   } catch (error) {
-    console.error('❌ Error confirmando pago:', error);
+    console.error('❌ Error confirmando pago manualmente:', error);
     res.status(500).json({ error: 'Error confirmando pago: ' + error.message });
   }
 });
@@ -437,13 +556,22 @@ app.get('/api/orders/status/:orderNumber', async (req, res) => {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
     
-    // Parsear datos
-    const subscription = order.datos_suscripcion ? JSON.parse(order.datos_suscripcion) : null;
-    const extras = order.datos_extras ? JSON.parse(order.datos_extras) : [];
+    // Parsear datos originales para obtener la estructura completa
+    const orderData = JSON.parse(order.datos_originales);
+    const subscription = orderData.subscription;
+    const extras = orderData.extras || [];
     
-    // Determinar estados de pago (puedes mejorar esto con una tabla de pagos)
-    const subscriptionPaid = order.estado === 'confirmed' || order.estado === 'subscription_paid';
-    const extrasPaid = order.estado === 'confirmed' || order.estado === 'extras_paid';
+    // Usar las nuevas columnas para determinar estado real de pagos
+    const subscriptionPaid = order.subscription_paid === 1;
+    const extrasPaid = order.extras_paid === 1;
+    
+    console.log(`📊 Consultando estado de ${orderNumber}:`, {
+      subscriptionPaid,
+      extrasPaid,
+      subscription_paid_column: order.subscription_paid,
+      extras_paid_column: order.extras_paid,
+      estado: order.estado
+    });
     
     res.json({
       orderNumber: order.orden_numero,
