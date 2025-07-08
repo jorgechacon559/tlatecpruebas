@@ -287,19 +287,3 @@ node setup-db.js
 # 5. Iniciar el servidor
 npm run dev
 ```
-
-### 🎯 URLs de MercadoPago Integradas
-
-**Suscripción (Funcional):**
-```
-https://www.mercadopago.com.mx/subscriptions/checkout?preapproval_plan_id=2c93808497e5a7880197e620da930045
-```
-
-**Producto Extra (Funcional):**
-```
-https://mpago.la/33sgGGY
-```
-
-**¡Listos para usar con tus enlaces reales de MercadoPago!**
-
-¡Perfecto para usar inmediatamente en producción con configuración mínima!
