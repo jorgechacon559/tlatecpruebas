@@ -231,21 +231,23 @@
       <h2>Paso 1: Selecciona tu suscripción</h2>
       <p>Elige el paquete que mejor se adapte a tus necesidades:</p>
       
-      <div class="product" data-type="subscription" data-id="sub1" data-price="10">
+      <div class="product" data-type="subscription" data-id="sub1" data-price="10" data-stripe-price="price_premium">
         <div class="product-type recurring">SUSCRIPCIÓN</div>
-        <h3>Paquete 1</h3>
+        <h3>Paquete Premium</h3>
         <p>Perfecto para comenzar. Accede a beneficios exclusivos con nuestra suscripción mensual básica.</p>
-        <p><strong>$10.00 MXN/mes</strong></p>
-        <button class="btn" onclick="selectSubscription(this)">Seleccionar Paquete 1</button>
+        <p><strong>$10 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Premium</button>
       </div>
 
-      <div class="product" data-type="subscription" data-id="sub2" data-price="11">
+      <div class="product" data-type="subscription" data-id="sub2" data-price="11" data-stripe-price="price_basic">
         <div class="product-type recurring">SUSCRIPCIÓN</div>
-        <h3>Paquete 2</h3>
+        <h3>Paquete Básico</h3>
         <p>Mayor valor y funcionalidades. Ideal para usuarios que buscan más beneficios y herramientas avanzadas.</p>
-        <p><strong>$11.00 MXN/mes</strong></p>
-        <button class="btn" onclick="selectSubscription(this)">Seleccionar Paquete 2</button>
+        <p><strong>$11 MXN/mes</strong></p>
+        <button class="btn" onclick="selectSubscription(this)">Seleccionar Básico</button>
       </div>
+
+
 
       <button class="btn btn-secondary hidden" id="continue-to-extras" onclick="goToStep(2)">
         Continuar a Productos Extra
@@ -257,19 +259,35 @@
       <h2>Paso 2: Productos adicionales (Opcional)</h2>
       <p>Agrega productos de pago único a tu pedido. Puedes seleccionar varios o ninguno:</p>
 
-      <div class="product" data-type="extra" data-id="extra1" data-price="6">
+      <div class="product" data-type="extra" data-id="extra1" data-price="2" data-url="https://mpago.la/33sgGGY">
         <div class="product-type">PAGO ÚNICO</div>
-        <h3>Pagina web</h3>
-        <p>Desarrollo completo de página web profesional. Incluye diseño responsivo, optimización SEO y hosting básico.</p>
-        <p><strong>$6.00 MXN</strong> (pago único)</p>
+        <h3>Producto Extra Premium</h3>
+        <p>Complemento premium para potenciar tu experiencia. Incluye funciones avanzadas y contenido exclusivo.</p>
+        <p><strong>$2 MXN</strong> (pago único)</p>
         <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
       </div>
 
-      <div class="product" data-type="extra" data-id="extra2" data-price="5">
+      <div class="product" data-type="extra" data-id="extra2" data-price="3" data-url="">
         <div class="product-type">PAGO ÚNICO</div>
-        <h3>Logos</h3>
-        <p>Diseño de logo profesional con múltiples variaciones. Incluye archivos vectoriales y diferentes formatos.</p>
-        <p><strong>$5.00 MXN</strong> (pago único)</p>
+        <h3>Pack de Plantillas</h3>
+        <p>Colección de plantillas profesionales listas para usar. Ahorra tiempo y obtén resultados profesionales.</p>
+        <p><strong>$3 MXN</strong> (pago único)</p>
+        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
+      </div>
+
+      <div class="product" data-type="extra" data-id="extra3" data-price="4" data-url="">
+        <div class="product-type">PAGO ÚNICO</div>
+        <h3>Curso Avanzado</h3>
+        <p>Curso completo con certificación incluida. Aprende técnicas avanzadas de la mano de expertos.</p>
+        <p><strong>$4 MXN</strong> (pago único)</p>
+        <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
+      </div>
+
+      <div class="product" data-type="extra" data-id="extra4" data-price="5" data-url="">
+        <div class="product-type">PAGO ÚNICO</div>
+        <h3>Kit de Recursos</h3>
+        <p>Conjunto de herramientas y recursos adicionales. Incluye guías, checklists y material de apoyo.</p>
+        <p><strong>$5 MXN</strong> (pago único)</p>
         <button class="btn btn-secondary" onclick="toggleExtra(this)">Agregar al Carrito</button>
       </div>
 
@@ -485,7 +503,13 @@
     }
 
     function processPayment() {
-      // Enviar datos al backend para crear pedido y obtener URL de checkout de Stripe
+      // Validar que siempre haya suscripción
+      if (!cart.subscription) {
+        alert('❌ Error: Debe seleccionar una suscripción.\n\nNo se pueden comprar solo productos extras.');
+        return;
+      }
+      
+      // Enviar datos al backend para crear pedido y obtener URLs de pago
       fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -504,24 +528,29 @@
             orderId: data.orderId,
             orderNumber: data.orderNumber,
             customerId: data.customerId,
+            checkoutUrl: data.checkoutUrl,
             sessionId: data.sessionId
           }));
           
           // Mostrar mensaje de procesamiento
-          let paymentMessage = '✅ Pedido registrado exitosamente!\n\nAhora procederemos con el pago seguro en Stripe:';
+          let paymentMessage = '✅ Pedido registrado exitosamente!\n\nSerás redirigido a Stripe para completar el pago de forma segura:';
           if (data.totalRecurrente > 0) {
-            paymentMessage += '\n• Suscripción mensual: $' + data.totalRecurrente + ' MXN/mes';
+            paymentMessage += '\n• Suscripción mensual ($' + data.totalRecurrente + ' MXN/mes)';
           }
           if (data.totalUnico > 0) {
-            paymentMessage += '\n• Productos adicionales: $' + data.totalUnico + ' MXN (pago único)';
+            paymentMessage += '\n• Productos adicionales ($' + data.totalUnico + ' MXN pago único)';
           }
-          paymentMessage += '\n\nSerás redirigido a Stripe para completar el pago de forma segura.';
+          paymentMessage += '\n\n¡Recibirás un correo de confirmación después del pago!';
           
           alert(paymentMessage);
           
-          // Redirigir directamente a Stripe Checkout
-          console.log('🔗 Redirigiendo a Stripe Checkout:', data.checkoutUrl);
-          window.location.href = data.checkoutUrl;
+          // Redirigir a Stripe Checkout
+          if (data.checkoutUrl) {
+            window.location.href = data.checkoutUrl;
+          }
+          
+          // NO redirigir automáticamente - Stripe manejará la redirección
+          // El success.html se abrirá cuando Stripe confirme el pago
           
         } else {
           alert('❌ Error al procesar el pedido: ' + (data.error || 'Error desconocido'));

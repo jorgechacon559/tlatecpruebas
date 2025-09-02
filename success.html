@@ -89,82 +89,75 @@
   <script>
     // Obtener parámetros de la URL
     const urlParams = new URLSearchParams(window.location.search);
-    const collectionId = urlParams.get('collection_id');
-    const collectionStatus = urlParams.get('collection_status');
-    const paymentId = urlParams.get('payment_id');
-    const preferenceId = urlParams.get('preference_id');
-    const externalReference = urlParams.get('external_reference');
+    const sessionId = urlParams.get('session_id');
     const orderNumber = urlParams.get('order');
-    const paymentTypeFromUrl = urlParams.get('type'); // 'subscription' o 'extras'
 
-    console.log('Parámetros de MercadoPago:', {
-      collectionId,
-      collectionStatus,
-      paymentId,
-      preferenceId,
-      externalReference,
-      orderNumber,
-      paymentType: paymentTypeFromUrl
+    console.log('Parámetros de Stripe:', {
+      sessionId,
+      orderNumber
     });
 
-    // Determinar el tipo de pago
-    let paymentType = paymentTypeFromUrl || 'extras'; // usar el tipo de la URL o por defecto extras
-    if (window.location.href.includes('subscription') || externalReference && externalReference.includes('SUB')) {
-      paymentType = 'subscription';
-    }
-
-    // Solo procesar si el pago fue aprobado
-    if (collectionStatus === 'approved' || paymentId) {
-      console.log(`✅ Pago ${paymentType} aprobado`);
+    // Con Stripe, solo necesitamos verificar que tengamos session_id y order
+    if (sessionId && orderNumber) {
+      console.log(`✅ Pago completado via Stripe`);
       
-      // Simular procesamiento
-      setTimeout(() => {
-        const orderRef = orderNumber || externalReference;
-        
-        if (orderRef) {
-          // Enviar confirmación al backend
-          fetch('/api/payment-confirmed', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              orderNumber: orderRef,
-              paymentType: paymentType,
-              paymentId: paymentId,
-              collectionId: collectionId,
-              status: collectionStatus,
-              preferenceId: preferenceId
-            })
-          })
-          .then(response => response.json())
-          .then(data => {
-            console.log('✅ Confirmación procesada:', data);
-            
-            // Ocultar loading y mostrar éxito
-            document.getElementById('processing').style.display = 'none';
-            document.getElementById('completed').style.display = 'block';
-            
-            // Actualizar mensaje de éxito
-            document.getElementById('completed').innerHTML = `
-              <p>✅ <strong>Pago ${paymentType === 'subscription' ? 'de suscripción' : 'de productos'} confirmado</strong></p>
-              <p>Pedido #${data.orderNumber}</p>
-              <p>Recibirás un correo de confirmación con todos los detalles.</p>
-            `;
-          })
-          .catch(error => {
-            console.error('❌ Error confirmando pago:', error);
-            document.getElementById('processing').innerHTML = 
-              '<p>⚠️ Pago recibido correctamente, pero hubo un error enviando la confirmación. Te contactaremos pronto.</p>';
-          });
-        } else {
-          document.getElementById('processing').innerHTML = 
-            '<p>⚠️ No se encontró referencia del pedido. Por favor contacta a soporte con tu ID de pago: ' + (paymentId || collectionId) + '</p>';
-        }
-      }, 2000);
+      // Obtener estado del pedido desde el backend
+      fetch(`/api/orders/status/${orderNumber}`)
+        .then(response => response.json())
+        .then(orderData => {
+          if (orderData.isPaid) {
+            console.log('✅ Pedido confirmado como pagado');
+            // Mostrar detalles del pedido
+            showOrderDetails(orderData);
+          } else {
+            console.log('⏳ Pedido aún pendiente');
+            showPendingMessage();
+          }
+        })
+        .catch(error => {
+          console.error('Error obteniendo estado del pedido:', error);
+          showErrorMessage();
+        });
     } else {
+      console.log('❌ Faltan parámetros de Stripe');
+      showErrorMessage();
+    }
+    
+    function showOrderDetails(orderData) {
+      document.getElementById('processing').style.display = 'none';
+      document.getElementById('completed').style.display = 'block';
+      
+      let html = `
+        <h2>✅ ¡Pago Completado!</h2>
+        <p><strong>Pedido #${orderData.orderNumber}</strong></p>
+        <p><strong>Cliente:</strong> ${orderData.customer.nombre} ${orderData.customer.apellido}</p>
+        <p><strong>Email:</strong> ${orderData.customer.email}</p>
+        <br>
+        <h3>Productos adquiridos:</h3>
+      `;
+      
+      if (orderData.subscription) {
+        html += `<p>🔄 <strong>${orderData.subscription.name}</strong> - $${orderData.subscription.price} MXN/mes</p>`;
+      }
+      
+      if (orderData.extras && orderData.extras.length > 0) {
+        orderData.extras.forEach(extra => {
+          html += `<p>💎 <strong>${extra.name}</strong> - $${extra.price} MXN</p>`;
+        });
+      }
+      
+      html += `<br><p>Recibirás un correo de confirmación con todos los detalles.</p>`;
+      document.getElementById('completed').innerHTML = html;
+    }
+    
+    function showPendingMessage() {
       document.getElementById('processing').innerHTML = 
-        '<p>❌ El pago no fue completado correctamente. Estado: ' + (collectionStatus || 'No disponible') + '</p><p>Por favor intenta nuevamente o contacta a soporte.</p>';
+        '<p>⏳ Tu pago está siendo procesado. Recibirás un correo de confirmación en breve.</p>';
+    }
+    
+    function showErrorMessage() {
+      document.getElementById('processing').innerHTML = 
+        '<p>❌ Hubo un problema verificando tu pago. Por favor contacta a soporte.</p>';
     }
   </script>
 </body>
